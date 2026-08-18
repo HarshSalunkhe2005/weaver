@@ -39,16 +39,20 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
     - `POST /api/scrapers/[id]/heal` → heal (`{issue, url}`)
     - `POST /api/scrapers/[id]/approve` → approve/reject (`{url, reject?}`)
   - `npm run build` registers all 4 routes correctly (confirmed in build output). Live smoke test: `curl -X POST localhost:3000/api/scrapers/c_msz54jq6b3lqmud8k/run` against the real collector returned correct structured JSON through Weaver's own API, not the raw CLI — confirms the whole chain (Next.js route → lib wrapper → CLI → Bright Data → back) works before any frontend exists.
+- **Picker UI built and wired end-to-end** (2026-08-18):
+  - `src/lib/parsePage.ts` — server-side fetch + Cheerio parse of a target URL into a flat, deduped list of candidate elements (`h1–h4`, `p`, `li`, `td`/`th`, `a`, `span`, `div`, `img`), capped at 200, each with a tag and short text preview. Deliberately not a pixel-perfect clone — just enough to recognize and click.
+  - `POST /api/parse-page` — wraps the above, server-side fetch avoids CORS entirely.
+  - `src/app/page.tsx` — replaces the default Next.js starter page with the actual product: URL input → clickable element list (click to select, inline text field to name each selection, e.g. "price") → "Create scraper" button that joins the labels into a plain-English description and calls `POST /api/scrapers` → shows the resulting Collector ID + Studio link → "Run scraper now" button to fetch and display live structured JSON.
+  - **Live-tested, not just built:** `npm run build` passes clean (5 routes total now), dev server smoke test confirmed `/api/parse-page` returns real structured element data against `books.toscrape.com` (title, price, table fields, etc.), and the homepage renders with no console/server errors.
+  - Not yet wired: the healing review screen (step 7–8) and activity log (step 9) don't have UI yet — `createResult`/`runResult` are only held in component state, not persisted anywhere.
 
 ## What Is Remaining
 1. Pick the actual demo target site(s) — must be public data, and ideally something without an existing Bright Data pre-built scraper ("long tail" requirement). Not yet chosen. (Product itself stays general-purpose/any-URL regardless — this is only about what we demo/submit.)
-2. Build the structural-picker UI (step 2–4 of the flow) — replace the default starter page. This is the next task.
-3. Wire the picker UI to the now-working `/api/scrapers` create endpoint.
-4. Build breakage-detection logic (step 6) — ours to design, not Bright Data's.
-5. Build the heal-trigger + review/approve UI (step 7–8) — this is the project's centerpiece for judging. Backend (`/api/scrapers/[id]/heal` + `/approve`) is already built and verified; just needs a UI on top.
-6. Build the healing activity log (step 9).
-7. Write the README properly, capture example structured output, record the demo video, write the Scraper Studio usage explanation — all required submission materials.
-8. Post build-progress on LinkedIn (tag WeMakeDevs) for the Daily Bugle track — separate from the core build, don't forget it.
+2. Build breakage-detection logic (step 6) — ours to design, not Bright Data's. Nothing exists yet to decide *when* a heal should trigger.
+3. Build the heal-trigger + review/approve UI (step 7–8) — this is the project's centerpiece for judging. Backend (`/api/scrapers/[id]/heal` + `/approve`) is already built and verified; just needs a UI on top, same pattern as the picker page.
+4. Build the healing activity log (step 9) — needs persistence (no DB/storage exists yet; everything today is in-memory component state, lost on refresh).
+5. Write the README properly, capture example structured output, record the demo video, write the Scraper Studio usage explanation — all required submission materials.
+6. Post build-progress on LinkedIn (tag WeMakeDevs) for the Daily Bugle track — separate from the core build, don't forget it.
 
 ## Decisions Made So Far
 - **Name:** Weaver.
