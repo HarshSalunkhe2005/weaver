@@ -23,19 +23,24 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
 9. A running **healing activity log** per scraper: timestamped history of what broke, what was healed, and who approved it.
 
 ## What Is Done
-- Nothing yet — repo scaffolded with `context/requirements.md` and this file only.
+- Repo scaffolded with `context/requirements.md` and this file.
+- Stack decided: Next.js (TS) full-stack.
+- **Bright Data CLI verified end-to-end** (2026-08-18): `@brightdata/cli` installed, `BRIGHTDATA_API_KEY` auth confirmed (`brightdata budget` → $50 balance). Ran a real smoke test against `books.toscrape.com` (a scraping sandbox site, not our actual demo target):
+  - `brightdata scraper create <url> "book title, price, and star rating"` → generated collector `c_msz54jq6b3lqmud8k` in ~70 polling steps (intent analysis → schema generation → code generation → preview).
+  - `brightdata scraper run c_msz54jq6b3lqmud8k <url> --json` → returned clean structured JSON: `{"book_title": "A Light in the Attic", "price": {"value": 51.77, "currency": "GBP", "symbol": "£"}, "star_rating": "Three"}`.
+  - `heal`/`approve` not yet tested (needs an actual break to react to, or a deliberately-wrong prompt to correct) — planned once the app is scaffolded.
+  - **API key handling:** key lives only as the `BRIGHTDATA_API_KEY` env var in the dev shell — never committed. App will read it from `.env.local` (gitignored) at runtime.
 
-## What Is Remaining (everything)
-1. Pick the actual demo target site(s) — must be public data, and ideally something without an existing Bright Data pre-built scraper ("long tail" requirement). Not yet chosen.
-2. Set up Bright Data CLI locally/in this environment: `bdata login`, confirm credits, confirm `bdata scraper create/run/heal/approve` work end to end against a real URL before building UI around it.
-3. Decide the stack (see Technology Stack above) and scaffold the app.
-4. Build the structural-picker UI (step 2–4 of the flow).
-5. Build the Scraper Studio glue layer (step 4–5).
-6. Build breakage-detection logic (step 6) — ours to design, not Bright Data's.
-7. Build the heal-trigger + review/approve UI (step 7–8) — this is the project's centerpiece for judging.
-8. Build the healing activity log (step 9).
-9. Write the README, capture example structured output, record the demo video, write the Scraper Studio usage explanation — all required submission materials.
-10. Post build-progress on LinkedIn (tag WeMakeDevs) for the Daily Bugle track — separate from the core build, don't forget it.
+## What Is Remaining
+1. Pick the actual demo target site(s) — must be public data, and ideally something without an existing Bright Data pre-built scraper ("long tail" requirement). Not yet chosen. (Product itself stays general-purpose/any-URL regardless — this is only about what we demo/submit.)
+2. Scaffold the Next.js app itself (routes, layout, base config) — not started yet.
+3. Build the structural-picker UI (step 2–4 of the flow).
+4. Build the Scraper Studio glue layer (step 4–5) — API routes wrapping the CLI commands already verified above.
+5. Build breakage-detection logic (step 6) — ours to design, not Bright Data's.
+6. Build the heal-trigger + review/approve UI (step 7–8) — this is the project's centerpiece for judging. Test `scraper heal`/`approve` for real once this exists.
+7. Build the healing activity log (step 9).
+8. Write the README, capture example structured output, record the demo video, write the Scraper Studio usage explanation — all required submission materials.
+9. Post build-progress on LinkedIn (tag WeMakeDevs) for the Daily Bugle track — separate from the core build, don't forget it.
 
 ## Decisions Made So Far
 - **Name:** Weaver.
