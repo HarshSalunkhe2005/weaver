@@ -19,23 +19,40 @@ interface CreateResult {
   view_url: string;
 }
 
-type Step = "input" | "picking" | "creating" | "created";
+type Stage = "read" | "select" | "weave" | "run";
+
+const STAGES: { key: Stage; label: string }[] = [
+  { key: "read", label: "Read" },
+  { key: "select", label: "Select" },
+  { key: "weave", label: "Weave" },
+  { key: "run", label: "Run" },
+];
 
 export default function Home() {
   const [url, setUrl] = useState("");
-  const [step, setStep] = useState<Step>("input");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingPage, setLoadingPage] = useState(false);
 
   const [parsed, setParsed] = useState<ParsedPage | null>(null);
   const [selections, setSelections] = useState<Map<string, string>>(new Map());
 
+  const [creating, setCreating] = useState(false);
   const [createResult, setCreateResult] = useState<CreateResult | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [runResult, setRunResult] = useState<unknown | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+
+  const stage: Stage = createResult
+    ? "run"
+    : parsed
+      ? "weave"
+      : url
+        ? "select"
+        : "read";
+  const stageOrder = STAGES.map((s) => s.key);
+  const stageIndex = stageOrder.indexOf(stage);
 
   async function handleLoadPage(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +61,8 @@ export default function Home() {
     setLoadError(null);
     setParsed(null);
     setSelections(new Map());
+    setCreateResult(null);
+    setRunResult(null);
     try {
       const res = await fetch("/api/parse-page", {
         method: "POST",
@@ -51,9 +70,8 @@ export default function Home() {
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load page");
+      if (!res.ok) throw new Error(data.error || "Couldn't read that page");
       setParsed(data);
-      setStep("picking");
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -67,7 +85,6 @@ export default function Home() {
       if (next.has(el.id)) {
         next.delete(el.id);
       } else {
-        // Default label: shorten the element's own text as a starting guess.
         const guess = el.text.split(/\s+/).slice(0, 4).join(" ");
         next.set(el.id, guess);
       }
@@ -76,38 +93,29 @@ export default function Home() {
   }
 
   function updateLabel(id: string, label: string) {
-    setSelections((prev) => {
-      const next = new Map(prev);
-      next.set(id, label);
-      return next;
-    });
-  }
-
-  function buildDescription(): string {
-    const labels = Array.from(selections.values()).filter(Boolean);
-    return labels.join(", ");
+    setSelections((prev) => new Map(prev).set(id, label));
   }
 
   async function handleCreateScraper() {
     if (!url || selections.size === 0) return;
-    setStep("creating");
+    setCreating(true);
     setCreateError(null);
     setCreateResult(null);
     setRunResult(null);
     try {
-      const description = buildDescription();
+      const description = Array.from(selections.values()).filter(Boolean).join(", ");
       const res = await fetch("/api/scrapers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, description }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create scraper");
+      if (!res.ok) throw new Error(data.error || "Couldn't create the scraper");
       setCreateResult(data);
-      setStep("created");
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Unknown error");
-      setStep("picking");
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -123,7 +131,7 @@ export default function Home() {
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to run scraper");
+      if (!res.ok) throw new Error(data.error || "Couldn't run the scraper");
       setRunResult(data);
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Unknown error");
@@ -133,75 +141,93 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <header className="border-b border-neutral-800 px-6 py-4">
-        <h1 className="text-xl font-semibold tracking-tight">🕸️ Weaver</h1>
-        <p className="text-sm text-neutral-400">
-          Paste a URL, click what you want scraped, get a real Scraper Studio scraper.
-        </p>
+    <div className="flex min-h-full flex-col">
+      <header className="masthead px-6 py-6 sm:px-10">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-[0.7rem] tracking-[0.14em] uppercase text-muted">
+            Scrape-Verse — self-healing scrapers
+          </p>
+          <h1 className="font-display mt-1 text-3xl italic tracking-tight sm:text-4xl">
+            Weaver
+          </h1>
+          <div className="masthead-rule mt-3 mb-3" />
+          <p className="max-w-xl text-[0.95rem] text-muted">
+            Point it at a page, choose what to pull, and it becomes a real
+            Bright Data Scraper Studio scraper — reviewable, not a black box,
+            every time it has to heal itself.
+          </p>
+        </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-8 space-y-8">
-        {/* Step 1: URL input */}
-        <form onSubmit={handleLoadPage} className="space-y-2">
-          <label className="block text-sm font-medium text-neutral-300">
-            Target URL
-          </label>
-          <div className="flex gap-2">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8 sm:px-10 space-y-6">
+        <div className="stepper" aria-label="Progress">
+          {STAGES.map((s, i) => (
+            <div
+              key={s.key}
+              className="stepper-cell"
+              data-active={i === stageIndex}
+              data-done={i < stageIndex}
+            >
+              <span className="stepper-index">0{i + 1}</span>
+              <span>{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Stage: Read */}
+        <section className="workbench-card space-y-3">
+          <h2 className="font-display text-lg">Read a page</h2>
+          <form onSubmit={handleLoadPage} className="flex gap-2">
             <input
               type="url"
               required
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/product/123"
-              className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="field-input font-mono flex-1 text-sm"
             />
-            <button
-              type="submit"
-              disabled={loadingPage}
-              className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
-            >
-              {loadingPage ? "Loading…" : "Load page"}
+            <button type="submit" disabled={loadingPage} className="btn-primary">
+              {loadingPage ? "Reading…" : "Read page"}
             </button>
-          </div>
-          {loadError && <p className="text-sm text-red-400">{loadError}</p>}
-        </form>
+          </form>
+          {loadError && <p className="text-fray text-sm">{loadError}</p>}
+        </section>
 
-        {/* Step 2: pick elements */}
+        {/* Stage: Select */}
         {parsed && (
-          <section className="space-y-3">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-medium text-neutral-300">
-                Click what you want scraped
-              </h2>
-              <span className="text-xs text-neutral-500">{parsed.title}</span>
+          <section className="workbench-card space-y-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-display text-lg">Choose what to extract</h2>
+              <span className="text-muted truncate text-xs">{parsed.title}</span>
             </div>
+            <p className="text-muted text-sm">
+              Click a row to select it, then name the field — this becomes the
+              schema Scraper Studio builds against.
+            </p>
 
-            <div className="max-h-96 overflow-y-auto rounded-md border border-neutral-800 divide-y divide-neutral-800">
+            <div
+              className="max-h-96 overflow-y-auto rounded-lg"
+              style={{ border: "1px solid var(--border)" }}
+            >
               {parsed.elements.map((el) => {
                 const selected = selections.has(el.id);
                 return (
                   <div
                     key={el.id}
-                    className={`flex items-center gap-3 px-3 py-2 cursor-pointer text-sm ${
-                      selected ? "bg-neutral-800" : "hover:bg-neutral-900"
-                    }`}
+                    className="element-row"
+                    data-selected={selected}
                     onClick={() => toggleElement(el)}
                   >
-                    <span className="shrink-0 rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-400">
-                      {el.tag}
-                    </span>
-                    <span className="flex-1 truncate text-neutral-200">
-                      {el.text}
-                    </span>
+                    <span className="tag-pill">{el.tag}</span>
+                    <span className="flex-1 truncate text-sm">{el.text}</span>
                     {selected && (
                       <input
                         type="text"
                         value={selections.get(el.id) || ""}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => updateLabel(el.id, e.target.value)}
-                        placeholder="field label"
-                        className="w-40 shrink-0 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs outline-none"
+                        placeholder="field name"
+                        className="field-input w-36 shrink-0 text-xs"
                       />
                     )}
                   </div>
@@ -210,55 +236,55 @@ export default function Home() {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-500">
-                {selections.size} field{selections.size === 1 ? "" : "s"} selected
+              <span className="text-muted text-xs">
+                {selections.size} field{selections.size === 1 ? "" : "s"} in the weave
               </span>
               <button
                 onClick={handleCreateScraper}
-                disabled={selections.size === 0 || step === "creating"}
-                className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-50"
+                disabled={selections.size === 0 || creating}
+                className="btn-primary"
               >
-                {step === "creating"
-                  ? "Creating scraper (this takes ~1 min)…"
-                  : "Create scraper"}
+                {creating ? "Weaving the scraper…" : "Create scraper"}
               </button>
             </div>
-            {createError && <p className="text-sm text-red-400">{createError}</p>}
+            {createError && <p className="text-fray text-sm">{createError}</p>}
+            {creating && (
+              <p className="text-muted text-xs">
+                Bright Data is generating and previewing the scraper — this
+                usually takes under a minute.
+              </p>
+            )}
           </section>
         )}
 
-        {/* Step 3: created */}
+        {/* Stage: Run */}
         {createResult && (
-          <section className="space-y-3 rounded-md border border-emerald-900 bg-emerald-950/40 p-4">
-            <h2 className="text-sm font-medium text-emerald-300">Scraper created</h2>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-neutral-300">
-              <dt className="text-neutral-500">Collector ID</dt>
+          <section className="result-panel space-y-3">
+            <h2 className="font-display text-lg">Scraper is live</h2>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-muted">Collector</dt>
               <dd className="font-mono">{createResult.collector_id}</dd>
-              <dt className="text-neutral-500">Status</dt>
+              <dt className="text-muted">Status</dt>
               <dd>{createResult.status}</dd>
-              <dt className="text-neutral-500">Studio</dt>
+              <dt className="text-muted">Studio</dt>
               <dd>
                 <a
                   href={createResult.view_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-indigo-400 hover:underline"
+                  className="text-mend underline underline-offset-2"
                 >
-                  {createResult.view_url}
+                  Open in Bright Data
                 </a>
               </dd>
             </dl>
 
-            <button
-              onClick={handleRunScraper}
-              disabled={running}
-              className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
-            >
+            <button onClick={handleRunScraper} disabled={running} className="btn-secondary">
               {running ? "Running…" : "Run scraper now"}
             </button>
-            {runError && <p className="text-sm text-red-400">{runError}</p>}
+            {runError && <p className="text-fray text-sm">{runError}</p>}
             {runResult != null && (
-              <pre className="mt-2 max-h-64 overflow-auto rounded bg-neutral-950 p-3 text-xs text-neutral-300">
+              <pre className="json-block font-mono">
                 {JSON.stringify(runResult, null, 2)}
               </pre>
             )}
