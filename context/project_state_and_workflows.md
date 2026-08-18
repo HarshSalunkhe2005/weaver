@@ -28,16 +28,24 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
 - **Bright Data CLI verified end-to-end** (2026-08-18): `@brightdata/cli` installed, `BRIGHTDATA_API_KEY` auth confirmed (`brightdata budget` → $50 balance). Ran a real smoke test against `books.toscrape.com` (a scraping sandbox site, not our actual demo target):
   - `brightdata scraper create <url> "book title, price, and star rating"` → generated collector `c_msz54jq6b3lqmud8k` in ~70 polling steps (intent analysis → schema generation → code generation → preview).
   - `brightdata scraper run c_msz54jq6b3lqmud8k <url> --json` → returned clean structured JSON: `{"book_title": "A Light in the Attic", "price": {"value": 51.77, "currency": "GBP", "symbol": "£"}, "star_rating": "Three"}`.
-  - `heal`/`approve` not yet tested (needs an actual break to react to, or a deliberately-wrong prompt to correct) — planned once the app is scaffolded.
+  - **`heal`/`approve` also verified** (2026-08-18, after app scaffold): `brightdata scraper heal c_msz54jq6b3lqmud8k "star_rating sometimes returns null, please make it more robust" --url <url>` → returned `status: "awaiting_approval"` with `preview_result` (the proposed new extraction) and `diff_summary` — heal does **not** auto-commit, it's approval-gated by design. `brightdata scraper approve c_msz54jq6b3lqmud8k --url <url>` → `status: "done"`, healed version now live under the same collector ID. Full lifecycle (`create → run → heal → approve`) confirmed working against a real site before any UI was built around it.
   - **API key handling:** key lives only in `.env.local` (gitignored, confirmed not tracked by git) — never committed. `.env.local.example` (tracked) documents the required variable with no value.
 - **Next.js app scaffolded** (2026-08-18): `create-next-app` with TypeScript, Tailwind, ESLint, App Router, `src/` dir, `@/*` import alias. Builds clean (`npm run build` succeeds, picks up `.env.local` automatically). Still just the default starter page — no product UI yet.
+- **Scraper Studio glue layer built and smoke-tested** (2026-08-18):
+  - `src/lib/brightdata.ts` — server-only wrapper shelling out to the `brightdata` CLI via `execFile` (never spawns a shell, never touches the API key client-side). Parses the CLI's final JSON line out of its stdout (it prints human-readable "Step: ... polling ..." progress lines first). Exports `createScraper`, `runScraper`, `healScraper`, `approveHeal` — typed against the *real* output shapes captured from the CLI tests above, not guessed from docs.
+  - API routes, all in `src/app/api/scrapers/`:
+    - `POST /api/scrapers` → create (`{url, description}`)
+    - `POST /api/scrapers/[id]/run` → run (`{url}`)
+    - `POST /api/scrapers/[id]/heal` → heal (`{issue, url}`)
+    - `POST /api/scrapers/[id]/approve` → approve/reject (`{url, reject?}`)
+  - `npm run build` registers all 4 routes correctly (confirmed in build output). Live smoke test: `curl -X POST localhost:3000/api/scrapers/c_msz54jq6b3lqmud8k/run` against the real collector returned correct structured JSON through Weaver's own API, not the raw CLI — confirms the whole chain (Next.js route → lib wrapper → CLI → Bright Data → back) works before any frontend exists.
 
 ## What Is Remaining
 1. Pick the actual demo target site(s) — must be public data, and ideally something without an existing Bright Data pre-built scraper ("long tail" requirement). Not yet chosen. (Product itself stays general-purpose/any-URL regardless — this is only about what we demo/submit.)
-2. Build the structural-picker UI (step 2–4 of the flow) — replace the default starter page.
-3. Build the Scraper Studio glue layer (step 4–5) — API routes wrapping the CLI commands already verified above.
+2. Build the structural-picker UI (step 2–4 of the flow) — replace the default starter page. This is the next task.
+3. Wire the picker UI to the now-working `/api/scrapers` create endpoint.
 4. Build breakage-detection logic (step 6) — ours to design, not Bright Data's.
-5. Build the heal-trigger + review/approve UI (step 7–8) — this is the project's centerpiece for judging. Test `scraper heal`/`approve` for real once this exists.
+5. Build the heal-trigger + review/approve UI (step 7–8) — this is the project's centerpiece for judging. Backend (`/api/scrapers/[id]/heal` + `/approve`) is already built and verified; just needs a UI on top.
 6. Build the healing activity log (step 9).
 7. Write the README properly, capture example structured output, record the demo video, write the Scraper Studio usage explanation — all required submission materials.
 8. Post build-progress on LinkedIn (tag WeMakeDevs) for the Daily Bugle track — separate from the core build, don't forget it.
