@@ -1,38 +1,22 @@
 @import "tailwindcss";
 
-/* ---------- Design tokens ---------- */
+/*
+ * Deliberately single-theme (dark), matching what every researched reference
+ * (Linear, Raycast, Warp) actually ships on their own marketing surfaces —
+ * not a light/dark toggle. Background and every color below are painted
+ * explicitly so the page holds regardless of host theme.
+ */
 :root {
-  --ink: #1b1f27;
-  --paper: #efece3;
-  --surface: #f8f6f0;
-  --surface-2: #e5e1d5;
-  --border: #d7d2c2;
-  --text: #1b1f27;
-  --text-muted: #625d4f;
-  --thread: #b97a2a;
-  --thread-soft: #e7d2b3;
-  --mend: #3e8b72;
-  --mend-soft: #d9ebe4;
-  --fray: #a8452f;
-  --fray-soft: #f1dbd4;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #efece3;
-    --paper: #1b1f27;
-    --surface: #23272f;
-    --surface-2: #2c313b;
-    --border: #3a4049;
-    --text: #efece3;
-    --text-muted: #a29d8c;
-    --thread: #d99a4a;
-    --thread-soft: #4a3620;
-    --mend: #5fac91;
-    --mend-soft: #1f352e;
-    --fray: #d16a4f;
-    --fray-soft: #3a231d;
-  }
+  --ink: #14110d;
+  --surface: #1c1811;
+  --surface-2: #262016;
+  --border: #372d1e;
+  --text: #f1ece0;
+  --text-muted: #8f8570;
+  --thread: #e2953f;
+  --thread-dim: #3a2a15;
+  --mend: #4fae8f;
+  --fray: #c96a4a;
 }
 
 * {
@@ -40,18 +24,19 @@
 }
 
 html {
-  background: var(--paper);
+  background: var(--ink);
 }
 
 body {
-  background: var(--paper);
+  background: var(--ink);
   color: var(--text);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv01", "ss03";
 }
 
 ::selection {
-  background: var(--thread-soft);
-  color: var(--ink);
+  background: var(--thread-dim);
+  color: var(--text);
 }
 
 :focus-visible {
@@ -68,92 +53,161 @@ body {
   }
 }
 
-/* ---------- Component classes ---------- */
-
-.font-display {
-  font-family: var(--font-display), Georgia, serif;
-}
+/* ---------- Type ---------- */
 
 .font-mono {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 
+.wordmark {
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-mend {
+  color: var(--mend);
+}
+
+.text-fray {
+  color: var(--fray);
+}
+
+/* ---------- Masthead ---------- */
+
 .masthead {
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
 }
 
 .masthead-rule {
-  height: 2px;
-  background: linear-gradient(
+  height: 1px;
+  width: 3rem;
+  background-image: linear-gradient(
     to right,
-    var(--thread) 0%,
-    var(--thread) 48px,
-    transparent 48px
+    var(--thread) 0,
+    var(--thread) 4px,
+    transparent 4px,
+    transparent 8px
   );
+  background-size: 8px 1px;
 }
+
+/* One-shot typewriter reveal for the tagline. The target width is the
+   text's own measured pixel width (set as --tw-final-width by the
+   Typewriter component after mount) — animating to 100% would instead
+   race to the *container's* width and clip long strings mid-sentence.
+   Runs once, never loops. Falls back to fully-visible text under
+   reduced-motion. */
+.typewriter {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 1px solid var(--thread);
+  width: 0;
+}
+
+.typewriter[data-measured="true"] {
+  animation: typewriter-reveal 1.4s steps(60, end) 1 forwards,
+    typewriter-caret 800ms steps(1) 7;
+}
+
+@keyframes typewriter-reveal {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--tw-final-width, 100%);
+  }
+}
+
+@keyframes typewriter-caret {
+  50% {
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typewriter {
+    animation: none;
+    border-right: none;
+    width: auto;
+  }
+}
+
+/* ---------- Stepper ---------- */
 
 .stepper {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--surface);
+  gap: 1.25rem;
 }
 
 .stepper-cell {
-  padding: 0.6rem 0.9rem;
-  border-right: 1px solid var(--border);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.stepper-rule {
+  height: 2px;
+  background: var(--border);
+}
+
+.stepper-cell[data-active="true"] .stepper-rule {
+  background: var(--thread);
+}
+
+.stepper-cell[data-done="true"] .stepper-rule {
+  background: var(--mend);
+}
+
+.stepper-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
-.stepper-cell:last-child {
-  border-right: none;
+.stepper-cell[data-active="true"] .stepper-label {
+  color: var(--text);
+}
+
+.stepper-cell[data-done="true"] .stepper-label {
+  color: var(--mend);
 }
 
 .stepper-index {
   font-family: var(--font-mono), monospace;
-  font-size: 0.68rem;
-  color: var(--text-muted);
 }
 
-.stepper-cell[data-active="true"] {
-  color: var(--text);
-  background: var(--thread-soft);
-}
-
-.stepper-cell[data-active="true"] .stepper-index {
-  color: var(--thread);
-}
-
-.stepper-cell[data-done="true"] {
-  color: var(--mend);
-}
+/* ---------- Workbench ---------- */
 
 .workbench-card {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--surface);
   padding: 1.25rem;
 }
 
 .field-input {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--paper);
+  border-radius: 6px;
+  background: var(--ink);
   color: var(--text);
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
   transition: border-color 120ms ease;
+}
+
+.field-input::placeholder {
+  color: var(--text-muted);
 }
 
 .field-input:focus {
@@ -161,9 +215,9 @@ body {
 }
 
 .btn-primary {
-  border-radius: 8px;
-  background: var(--ink);
-  color: var(--paper);
+  border-radius: 6px;
+  background: var(--thread);
+  color: var(--ink);
   font-weight: 600;
   font-size: 0.88rem;
   padding: 0.6rem 1.1rem;
@@ -171,31 +225,31 @@ body {
 }
 
 .btn-primary:hover:not(:disabled) {
-  opacity: 0.85;
+  opacity: 0.88;
 }
 
 .btn-primary:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .btn-secondary {
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
   font-weight: 600;
   font-size: 0.82rem;
   padding: 0.5rem 0.9rem;
-  transition: background 120ms ease;
+  transition: border-color 120ms ease;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--surface-2);
+  border-color: var(--thread);
 }
 
 .btn-secondary:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -205,7 +259,7 @@ body {
   gap: 0.75rem;
   padding: 0.55rem 0.85rem;
   cursor: pointer;
-  border-left: 3px solid transparent;
+  border-left: 2px solid transparent;
   border-bottom: 1px solid var(--border);
   transition: background 100ms ease, border-color 100ms ease;
 }
@@ -219,7 +273,7 @@ body {
 }
 
 .element-row[data-selected="true"] {
-  background: var(--thread-soft);
+  background: var(--thread-dim);
   border-left-color: var(--thread);
 }
 
@@ -235,37 +289,70 @@ body {
   padding: 0.15rem 0.4rem;
 }
 
+/* ---------- Weaving progress (shown while create/heal is polling) ----------
+   A moving dashed thread rather than a generic spinner — ties to the
+   product's actual metaphor and gives the ~60-70s wait something honest
+   to look at instead of a static "please wait". */
+.weaving-progress {
+  height: 2px;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--border);
+  position: relative;
+}
+
+.weaving-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--thread) 0,
+    var(--thread) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  background-size: 40px 2px;
+  animation: weaving-slide 900ms linear infinite;
+}
+
+@keyframes weaving-slide {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 40px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weaving-progress::after {
+    animation: none;
+  }
+}
+
+/* ---------- Result panels ---------- */
+
 .result-panel {
-  border-radius: 12px;
-  border: 1px solid var(--mend);
-  background: var(--mend-soft);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--mend);
+  background: var(--surface);
   padding: 1.1rem 1.25rem;
 }
 
 .result-panel-error {
-  border-color: var(--fray);
-  background: var(--fray-soft);
+  border-top-color: var(--fray);
 }
 
 .json-block {
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--ink);
-  color: var(--paper);
+  border: 1px solid var(--border);
   padding: 0.9rem 1rem;
   font-size: 0.78rem;
   line-height: 1.5;
   max-height: 20rem;
   overflow: auto;
-}
-
-.text-muted {
-  color: var(--text-muted);
-}
-
-.text-mend {
-  color: var(--mend);
-}
-
-.text-fray {
-  color: var(--fray);
 }

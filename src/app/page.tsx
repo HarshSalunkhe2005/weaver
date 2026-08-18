@@ -1,6 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+
+/**
+ * Reveals `text` with a one-shot typewriter animation. Measures the text's
+ * own natural pixel width after mount (via scrollWidth, which reports full
+ * un-clipped content size even while overflow:hidden + width:0 are applied)
+ * and animates to exactly that width — animating to a CSS `100%` instead
+ * would race to the *container's* width and clip long strings mid-sentence.
+ */
+function Typewriter({ text, className }: { text: string; className?: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [measured, setMeasured] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--tw-final-width", `${el.scrollWidth}px`);
+    setMeasured(true);
+  }, [text]);
+
+  return (
+    <p ref={ref} className={`typewriter ${className ?? ""}`} data-measured={measured}>
+      {text}
+    </p>
+  );
+}
 
 interface PageElement {
   id: string;
@@ -27,6 +52,10 @@ const STAGES: { key: Stage; label: string }[] = [
   { key: "weave", label: "Weave" },
   { key: "run", label: "Run" },
 ];
+
+const TAGLINE = "Click what matters. Weaver builds the scraper.";
+const SUBTITLE =
+  "A real Bright Data Scraper Studio scraper, reviewable every time it has to heal itself.";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -144,23 +173,18 @@ export default function Home() {
     <div className="flex min-h-full flex-col">
       <header className="masthead px-6 py-6 sm:px-10">
         <div className="mx-auto max-w-3xl">
-          <p className="text-[0.7rem] tracking-[0.14em] uppercase text-muted">
+          <p className="text-[0.68rem] tracking-[0.14em] uppercase text-muted">
             Scrape-Verse — self-healing scrapers
           </p>
-          <h1 className="font-display mt-1 text-3xl italic tracking-tight sm:text-4xl">
-            Weaver
-          </h1>
+          <h1 className="wordmark mt-1 text-3xl sm:text-4xl">Weaver</h1>
           <div className="masthead-rule mt-3 mb-3" />
-          <p className="max-w-xl text-[0.95rem] text-muted">
-            Point it at a page, choose what to pull, and it becomes a real
-            Bright Data Scraper Studio scraper — reviewable, not a black box,
-            every time it has to heal itself.
-          </p>
+          <Typewriter text={TAGLINE} className="text-[0.95rem]" />
+          <p className="text-muted mt-1 max-w-xl text-[0.95rem]">{SUBTITLE}</p>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8 sm:px-10 space-y-6">
-        <div className="stepper" aria-label="Progress">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8 sm:px-10 space-y-8">
+        <nav className="stepper" aria-label="Progress">
           {STAGES.map((s, i) => (
             <div
               key={s.key}
@@ -168,15 +192,18 @@ export default function Home() {
               data-active={i === stageIndex}
               data-done={i < stageIndex}
             >
-              <span className="stepper-index">0{i + 1}</span>
-              <span>{s.label}</span>
+              <span className="stepper-label">
+                <span className="stepper-index">0{i + 1}</span>
+                {s.label}
+              </span>
+              <span className="stepper-rule" />
             </div>
           ))}
-        </div>
+        </nav>
 
         {/* Stage: Read */}
         <section className="workbench-card space-y-3">
-          <h2 className="font-display text-lg">Read a page</h2>
+          <h2 className="text-base font-semibold">Read a page</h2>
           <form onSubmit={handleLoadPage} className="flex gap-2">
             <input
               type="url"
@@ -197,7 +224,7 @@ export default function Home() {
         {parsed && (
           <section className="workbench-card space-y-3">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-display text-lg">Choose what to extract</h2>
+              <h2 className="text-base font-semibold">Choose what to extract</h2>
               <span className="text-muted truncate text-xs">{parsed.title}</span>
             </div>
             <p className="text-muted text-sm">
@@ -244,15 +271,18 @@ export default function Home() {
                 disabled={selections.size === 0 || creating}
                 className="btn-primary"
               >
-                {creating ? "Weaving the scraper…" : "Create scraper"}
+                {creating ? "Weaving…" : "Create scraper"}
               </button>
             </div>
             {createError && <p className="text-fray text-sm">{createError}</p>}
             {creating && (
-              <p className="text-muted text-xs">
-                Bright Data is generating and previewing the scraper — this
-                usually takes under a minute.
-              </p>
+              <div className="space-y-1.5">
+                <div className="weaving-progress" />
+                <p className="text-muted text-xs">
+                  Bright Data is generating and previewing the scraper —
+                  usually under a minute.
+                </p>
+              </div>
             )}
           </section>
         )}
@@ -260,7 +290,7 @@ export default function Home() {
         {/* Stage: Run */}
         {createResult && (
           <section className="result-panel space-y-3">
-            <h2 className="font-display text-lg">Scraper is live</h2>
+            <h2 className="text-mend text-base font-semibold">Scraper is live</h2>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
               <dt className="text-muted">Collector</dt>
               <dd className="font-mono">{createResult.collector_id}</dd>
