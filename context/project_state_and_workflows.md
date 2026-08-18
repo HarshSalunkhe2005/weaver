@@ -6,11 +6,10 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
 **Status:** Day 2 of the hackathon. Repo just scaffolded. No code written yet.
 
 ## Technology Stack
-- **TBD** — not yet decided. Needs a decision on:
-  - Frontend framework for the picker UI + healing-review dashboard
-  - Backend/glue language to shell out to the Bright Data CLI (or call its API directly)
+- **Next.js (TypeScript), App Router, single full-stack web app.** Frontend (picker UI + healing-review dashboard) and backend (API routes shelling out to the Bright Data CLI) live in one codebase — chosen for solo-build speed and easy demo deployment.
+- Still open:
   - Where run history / healing-activity log gets persisted (DB vs. flat files for hackathon scope)
-  - Deployment target for the demo (if any) vs. purely local/CLI demo
+  - Deployment target for the demo
 
 ## Core Product Flow (target design)
 1. User pastes a target URL into Weaver's UI.
@@ -40,6 +39,7 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
 
 ## Decisions Made So Far
 - **Name:** Weaver.
+- **Stack:** Next.js (TypeScript), App Router, single full-stack web app (not mobile, not a separate frontend/backend split).
 - **Solo entry**, not a team.
 - **Core differentiator:** making the self-healing repair reviewable/explainable via UI (approve/reject a diff), rather than a black-box "it just works" toggle — chosen because it hits Suit-Up (UI) and Reliability/Self-Healing judging criteria simultaneously, and because the official kickoff guide's own "bonus" suggestion ("automate the whole heal loop") implies most entrants will stop at full automation without a review layer.
 - **Terminal/CLI-first build**, not dashboard-first — matches the grand-prize criterion on coding-agent integration and the official "keep the terminal as your UI" best practice.
@@ -47,6 +47,5 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
 
 ## Open Questions / Not Yet Decided
 - Exact target site(s) for the demo.
-- Stack choice.
 - Whether breakage-detection + auto-heal-trigger runs as a scheduled job, a manual "check now" button, or both, for hackathon scope.
 - Whether to persist run history in a real DB or keep it file-based given the short timeline.
