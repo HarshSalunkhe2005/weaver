@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: weaver
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: BRIGHTDATA_API_KEY
+        sync: false # set manually in the Render dashboard, never committed
+      - key: NODE_VERSION
+        value: 22

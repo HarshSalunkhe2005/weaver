@@ -12,10 +12,26 @@
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { existsSync } from "node:fs";
+import path from "node:path";
 
 const execFileAsync = promisify(execFile);
 
-const CLI_BIN = "brightdata";
+// Prefer the CLI installed as a real project dependency (node_modules/.bin) —
+// this is what a fresh Render container actually has. Fall back to a global
+// `brightdata` on PATH for local dev environments where it was installed
+// with `npm install -g` instead.
+function resolveCliBin(): string {
+  const localBin = path.join(
+    process.cwd(),
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "brightdata.cmd" : "brightdata"
+  );
+  return existsSync(localBin) ? localBin : "brightdata";
+}
+
+const CLI_BIN = resolveCliBin();
 const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000; // scraper create/heal can poll for minutes
 
 function requireApiKey(): string {

@@ -52,6 +52,11 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
   - **Purposeful motion added**, both respecting `prefers-reduced-motion`: a one-shot typewriter reveal on the masthead tagline, and a "weaving progress" bar (moving dashed thread, not a generic spinner) shown during the real 60–70s `create`/`heal` wait — ties to the product's own metaphor and gives that wait something honest to look at.
   - **Caught and fixed a real bug during verification, not after**: the typewriter's CSS animated to `width: 100%`, which resolves against the *containing block*, not the text's own length — long strings clipped mid-sentence. Fixed by measuring the text's actual `scrollWidth` in a small `Typewriter` component (`useLayoutEffect` + a CSS custom property) and animating to that pixel value instead. Also split the original long tagline into a short animated hook + a calmer static subtitle, since forcing a long, wrapping sentence onto one `white-space: nowrap` line for the reveal trick was the wrong shape regardless.
   - **Verified visually at each step**, not just by build passing: screenshotted the empty state, confirmed the typewriter completes correctly (not mid-animation), and screenshotted a real in-flight `create` call showing the weaving-progress bar animating against actual Bright Data latency.
+- **Render deployment prepared** (2026-08-18), after Railway's free trial expired:
+  - Fixed a real portability bug first: `src/lib/brightdata.ts` previously invoked a bare `"brightdata"` command, which only worked because it happened to be globally `npm install -g`'d in this dev environment — a fresh Render container wouldn't have it. Added `@brightdata/cli` as a proper project dependency (`npm install @brightdata/cli --save`) and changed the wrapper to resolve `node_modules/.bin/brightdata` explicitly first, falling back to global `PATH` for local dev. **Re-verified end-to-end after the change** — rebuilt, restarted the dev server, and re-ran the same live `run` smoke test against the real collector to confirm the local-dependency path actually works, not just that it compiled.
+  - Added `render.yaml` (Render Blueprint): free-tier web service, `npm install && npm run build` / `npm run start`, `BRIGHTDATA_API_KEY` deliberately left `sync: false` (set manually in Render's dashboard, never committed).
+  - README updated with local-dev setup and Render deploy steps, including the known caveat: free-tier containers sleep on idle, first request after a gap takes ~30–60s to wake — worth hitting once before a live demo.
+  - **Not yet done: the actual Render account/service creation** — that requires the user's own Render login, can't be done from here. Repo is ready to point Render's "New → Blueprint" at as soon as that happens.
 
 ## What Is Remaining
 1. Pick the actual demo target site(s) — must be public data, and ideally something without an existing Bright Data pre-built scraper ("long tail" requirement). Not yet chosen. (Product itself stays general-purpose/any-URL regardless — this is only about what we demo/submit.)
@@ -60,6 +65,7 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
 4. Build the healing activity log (step 9) — needs persistence (no DB/storage exists yet; everything today is in-memory component state, lost on refresh).
 5. Write the README properly, capture example structured output, record the demo video, write the Scraper Studio usage explanation — all required submission materials.
 6. Post build-progress on LinkedIn (tag WeMakeDevs) for the Daily Bugle track — separate from the core build, don't forget it.
+7. Actually create the Render service (New → Blueprint against this repo) and set `BRIGHTDATA_API_KEY` there — requires the user's Render login.
 
 ## Decisions Made So Far
 - **Name:** Weaver.
@@ -68,7 +74,7 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
 - **Core differentiator:** making the self-healing repair reviewable/explainable via UI (approve/reject a diff), rather than a black-box "it just works" toggle — chosen because it hits Suit-Up (UI) and Reliability/Self-Healing judging criteria simultaneously, and because the official kickoff guide's own "bonus" suggestion ("automate the whole heal loop") implies most entrants will stop at full automation without a review layer.
 - **Terminal/CLI-first build**, not dashboard-first — matches the grand-prize criterion on coding-agent integration and the official "keep the terminal as your UI" best practice.
 - **Visual identity (v2, current)**: single dark theme, warm near-black canvas, one ochre accent (`--thread`), Inter + IBM Plex Mono — grounded in researched teardowns of Linear/Raycast/Warp rather than a generic "avoid AI-slop" checklist alone. Carry this system forward for the heal/review UI and activity log rather than improvising new styles.
-- **Hosting: Railway ruled out** — free trial expired. Render (persistent free-tier web service, same "no serverless timeout" property that made Railway the pick over Vercel) is the fallback; not yet set up.
+- **Hosting: Render** — Railway ruled out (free trial expired). Render chosen for the same reason Railway was: persistent process, no serverless timeout to fight against 60–70s `create`/`heal` calls. `render.yaml` blueprint is in the repo; actual service creation is a manual step for the user (needs their Render login).
 - Registration, Bright Data account signup, and starring the sponsor repo are already done (prerequisite steps, not project deliverables).
 
 ## Open Questions / Not Yet Decided
