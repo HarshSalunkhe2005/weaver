@@ -141,6 +141,18 @@ export async function approveHeal(
   reject = false
 ): Promise<ApproveResult> {
   const args = ["scraper", "approve", collectorId, "--url", url];
-  if (reject) args.push("--reject");
+  if (reject) {
+    args.push("--reject");
+  } else {
+    // Without --auto-save, `approve` completes the review job (status:
+    // "done") but does NOT persist the fix to the collector's live
+    // template — confirmed by reproducing it twice against the deployed
+    // app: approve returned "done", but a subsequent `run` still used the
+    // pre-heal schema. Adding --auto-save makes a real difference: the
+    // response gains a "save_new_template" completed step, and the next
+    // `run` actually reflects the fix. See project_state_and_workflows.md
+    // for the full investigation.
+    args.push("--auto-save");
+  }
   return runCli(args) as Promise<ApproveResult>;
 }
