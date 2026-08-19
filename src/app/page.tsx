@@ -44,6 +44,23 @@ interface CreateResult {
   view_url: string;
 }
 
+interface HealResult {
+  collector_id: string;
+  status: string;
+  prompt: string;
+  view_url: string;
+  preview_result: unknown;
+  diff_summary: string;
+}
+
+interface HealLogEntry {
+  id: string;
+  timestamp: string;
+  issue: string;
+  outcome: "approved" | "rejected";
+  diffSummary: string;
+}
+
 type Stage = "read" | "select" | "weave" | "run";
 
 const STAGES: { key: Stage; label: string }[] = [
@@ -72,6 +89,13 @@ export default function Home() {
   const [runResult, setRunResult] = useState<unknown | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+
+  const [healIssue, setHealIssue] = useState("");
+  const [healing, setHealing] = useState(false);
+  const [healResult, setHealResult] = useState<HealResult | null>(null);
+  const [healError, setHealError] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [healLog, setHealLog] = useState<HealLogEntry[]>([]);
 
   const stage: Stage = createResult
     ? "run"
@@ -166,6 +190,67 @@ export default function Home() {
       setRunError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleStartHeal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!createResult || !healIssue) return;
+    setHealing(true);
+    setHealError(null);
+    setHealResult(null);
+    try {
+      const res = await fetch(`/api/scrapers/${createResult.collector_id}/heal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issue: healIssue, url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't start healing");
+      setHealResult(data);
+    } catch (err) {
+      setHealError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setHealing(false);
+    }
+  }
+
+  async function handleResolveHeal(reject: boolean) {
+    if (!createResult || !healResult) return;
+    setResolving(true);
+    setHealError(null);
+    try {
+      const res = await fetch(`/api/scrapers/${createResult.collector_id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, reject }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't resolve the fix");
+
+      setHealLog((prev) => [
+        {
+          id: `${createResult.collector_id}-${Date.now()}`,
+          timestamp: new Date().toLocaleString(),
+          issue: healIssue,
+          outcome: reject ? "rejected" : "approved",
+          diffSummary: healResult.diff_summary,
+        },
+        ...prev,
+      ]);
+      setHealResult(null);
+      setHealIssue("");
+
+      // On approval the healed version is now live under the same collector
+      // ID — re-run immediately so the "Scraper is live" panel reflects the
+      // fix, rather than leaving stale pre-heal data on screen.
+      if (!reject) {
+        await handleRunScraper();
+      }
+    } catch (err) {
+      setHealError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setResolving(false);
     }
   }
 
@@ -317,6 +402,100 @@ export default function Home() {
               <pre className="json-block font-mono">
                 {JSON.stringify(runResult, null, 2)}
               </pre>
+            )}
+          </section>
+        )}
+
+        {/* Heal: report an issue, review the diff, approve or reject */}
+        {createResult && (
+          <section className="workbench-card space-y-3">
+            <h2 className="text-base font-semibold">Heal it when it breaks</h2>
+            <p className="text-muted text-sm">
+              If the site changes and extraction starts failing, describe
+              what broke — Bright Data proposes a fix you review before
+              anything goes live.
+            </p>
+
+            {!healResult && (
+              <form onSubmit={handleStartHeal} className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  value={healIssue}
+                  onChange={(e) => setHealIssue(e.target.value)}
+                  placeholder="e.g. price is returning null"
+                  className="field-input flex-1 text-sm"
+                />
+                <button type="submit" disabled={healing} className="btn-secondary">
+                  {healing ? "Diagnosing…" : "Heal scraper"}
+                </button>
+              </form>
+            )}
+            {healing && (
+              <div className="space-y-1.5">
+                <div className="weaving-progress" />
+                <p className="text-muted text-xs">
+                  Bright Data is diagnosing and previewing a fix.
+                </p>
+              </div>
+            )}
+            {healError && <p className="text-fray text-sm">{healError}</p>}
+
+            {healResult && (
+              <div className="space-y-3">
+                <p className="text-sm">{healResult.diff_summary}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <p className="text-muted text-xs">Before (last run)</p>
+                    <pre className="json-block font-mono">
+                      {runResult != null
+                        ? JSON.stringify(runResult, null, 2)
+                        : "— no prior run to compare —"}
+                    </pre>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-mend text-xs">Proposed fix</p>
+                    <pre className="json-block font-mono">
+                      {JSON.stringify(healResult.preview_result, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleResolveHeal(false)}
+                    disabled={resolving}
+                    className="btn-primary"
+                  >
+                    {resolving ? "Applying…" : "Approve fix"}
+                  </button>
+                  <button
+                    onClick={() => handleResolveHeal(true)}
+                    disabled={resolving}
+                    className="btn-secondary"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {healLog.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-muted text-xs">Healing activity</p>
+                <ul className="space-y-1.5">
+                  {healLog.map((entry) => (
+                    <li key={entry.id} className="flex items-start gap-2 text-xs">
+                      <span
+                        className={entry.outcome === "approved" ? "text-mend" : "text-fray"}
+                      >
+                        {entry.outcome === "approved" ? "✓ approved" : "✕ rejected"}
+                      </span>
+                      <span className="font-mono text-muted">{entry.timestamp}</span>
+                      <span className="text-muted">— {entry.issue}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </section>
         )}
