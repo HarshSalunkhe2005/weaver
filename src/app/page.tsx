@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { PagePicker } from "./PagePicker";
 
 /**
  * Reveals `text` with a one-shot typewriter animation. Measures the text's
@@ -27,15 +28,9 @@ function Typewriter({ text, className }: { text: string; className?: string }) {
   );
 }
 
-interface PageElement {
-  id: string;
-  tag: string;
-  text: string;
-}
-
-interface ParsedPage {
+interface RenderedPage {
   title: string;
-  elements: PageElement[];
+  html: string;
 }
 
 interface CreateResult {
@@ -79,8 +74,9 @@ export default function Home() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingPage, setLoadingPage] = useState(false);
 
-  const [parsed, setParsed] = useState<ParsedPage | null>(null);
+  const [renderedPage, setRenderedPage] = useState<RenderedPage | null>(null);
   const [selections, setSelections] = useState<Map<string, string>>(new Map());
+  const [selectionTags, setSelectionTags] = useState<Map<string, string>>(new Map());
 
   const [creating, setCreating] = useState(false);
   const [createResult, setCreateResult] = useState<CreateResult | null>(null);
@@ -99,7 +95,7 @@ export default function Home() {
 
   const stage: Stage = createResult
     ? "run"
-    : parsed
+    : renderedPage
       ? "weave"
       : url
         ? "select"
@@ -112,19 +108,20 @@ export default function Home() {
     if (!url) return;
     setLoadingPage(true);
     setLoadError(null);
-    setParsed(null);
+    setRenderedPage(null);
     setSelections(new Map());
+    setSelectionTags(new Map());
     setCreateResult(null);
     setRunResult(null);
     try {
-      const res = await fetch("/api/parse-page", {
+      const res = await fetch("/api/render-page", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't read that page");
-      setParsed(data);
+      setRenderedPage(data);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -132,15 +129,36 @@ export default function Home() {
     }
   }
 
-  function toggleElement(el: PageElement) {
+  function handlePickerToggle(id: string, guessLabel: string, tag: string) {
     setSelections((prev) => {
       const next = new Map(prev);
-      if (next.has(el.id)) {
-        next.delete(el.id);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        const guess = el.text.split(/\s+/).slice(0, 4).join(" ");
-        next.set(el.id, guess);
+        next.set(id, guessLabel);
       }
+      return next;
+    });
+    setSelectionTags((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.set(id, tag);
+      }
+      return next;
+    });
+  }
+
+  function removeSelection(id: string) {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+    setSelectionTags((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
       return next;
     });
   }
@@ -306,46 +324,50 @@ export default function Home() {
         </section>
 
         {/* Stage: Select */}
-        {parsed && (
+        {renderedPage && (
           <section className="workbench-card space-y-3">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-base font-semibold">Choose what to extract</h2>
-              <span className="text-muted truncate text-xs">{parsed.title}</span>
+              <span className="text-muted truncate text-xs">{renderedPage.title}</span>
             </div>
             <p className="text-muted text-sm">
-              Click a row to select it, then name the field — this becomes the
-              schema Scraper Studio builds against.
+              This is the real page — click directly on what you want. We
+              don&apos;t execute its scripts (safety), so pages that render
+              via client-side JavaScript may look incomplete here.
             </p>
 
-            <div
-              className="max-h-96 overflow-y-auto rounded-lg"
-              style={{ border: "1px solid var(--border)" }}
-            >
-              {parsed.elements.map((el) => {
-                const selected = selections.has(el.id);
-                return (
-                  <div
-                    key={el.id}
-                    className="element-row"
-                    data-selected={selected}
-                    onClick={() => toggleElement(el)}
-                  >
-                    <span className="tag-pill">{el.tag}</span>
-                    <span className="flex-1 truncate text-sm">{el.text}</span>
-                    {selected && (
-                      <input
-                        type="text"
-                        value={selections.get(el.id) || ""}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => updateLabel(el.id, e.target.value)}
-                        placeholder="field name"
-                        className="field-input w-36 shrink-0 text-xs"
-                      />
-                    )}
+            <PagePicker
+              html={renderedPage.html}
+              selections={selections}
+              onToggle={handlePickerToggle}
+            />
+
+            {selections.size > 0 && (
+              <div
+                className="max-h-56 overflow-y-auto rounded-lg"
+                style={{ border: "1px solid var(--border)" }}
+              >
+                {Array.from(selections.entries()).map(([id, label]) => (
+                  <div key={id} className="element-row" data-selected="true">
+                    <span className="tag-pill">{selectionTags.get(id)}</span>
+                    <input
+                      type="text"
+                      value={label}
+                      onChange={(e) => updateLabel(id, e.target.value)}
+                      placeholder="field name"
+                      className="field-input flex-1 text-xs"
+                    />
+                    <button
+                      onClick={() => removeSelection(id)}
+                      className="text-muted hover:text-fray shrink-0 text-xs"
+                      aria-label="Remove field"
+                    >
+                      ✕
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <span className="text-muted text-xs">
