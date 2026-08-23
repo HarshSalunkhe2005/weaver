@@ -113,6 +113,14 @@ export default function Home() {
     setSelectionTags(new Map());
     setCreateResult(null);
     setRunResult(null);
+    setRunError(null);
+    // Heal state is scoped to a specific collector — a fresh page/scraper
+    // means a fresh heal history, not stale entries from whatever was
+    // healed on the previous collector.
+    setHealIssue("");
+    setHealResult(null);
+    setHealError(null);
+    setHealLog([]);
     try {
       const res = await fetch("/api/render-page", {
         method: "POST",
@@ -173,6 +181,13 @@ export default function Home() {
     setCreateError(null);
     setCreateResult(null);
     setRunResult(null);
+    setRunError(null);
+    // A fresh scraper means a fresh heal history — the previous collector's
+    // heal log doesn't apply to whatever collector_id comes back next.
+    setHealIssue("");
+    setHealResult(null);
+    setHealError(null);
+    setHealLog([]);
     try {
       const description = Array.from(selections.values()).filter(Boolean).join(", ");
       const res = await fetch("/api/scrapers", {

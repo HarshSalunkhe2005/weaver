@@ -33,7 +33,23 @@ export async function POST(req: NextRequest) {
     const page = await fetchRenderablePage(url);
     return NextResponse.json(page);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: describeFetchError(err) }, { status: 502 });
   }
+}
+
+/**
+ * Node's `fetch` collapses every network-level failure (DNS lookup
+ * failure, connection refused, TLS error) into a bare `TypeError: fetch
+ * failed` — the actually useful reason lives one level down in `err.cause`
+ * (e.g. `ENOTFOUND`, `ECONNREFUSED`). Surface that instead of the generic
+ * message so a user pasting a typo'd or dead domain sees something
+ * actionable rather than just "fetch failed".
+ */
+function describeFetchError(err: unknown): string {
+  if (!(err instanceof Error)) return "Unknown error";
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause instanceof Error && cause.message) {
+    return `${err.message}: ${cause.message}`;
+  }
+  return err.message;
 }
