@@ -85,13 +85,14 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
   - Also improved `/api/render-page`'s error messages: Node's `fetch` collapses every network failure (DNS lookup failure, connection refused) into a bare `"fetch failed"` with the actual reason hidden in `err.cause` — now surfaced (e.g. `"fetch failed: getaddrinfo ENOTFOUND ..."`). Tested against an unreachable domain, a real 404, a malformed URL, and a missing `url` field — all four return clear, distinct error messages, not a generic 500.
   - Real-world timing note: `POST /api/scrapers` (create) took anywhere from ~70s to **3.3 minutes** across different test runs — Bright Data's own generation time varies a lot. Worth pacing the demo recording around this (don't cut recording tight against an assumed ~1 min).
   - `npm run build` and `npm run lint` both clean after these fixes.
+  - **Deployed and confirmed live on Render**: the improved `ENOTFOUND`-style error message was polled for and confirmed present on the production URL (not assumed from the push alone) — same deploy also carries the heal-state-leak fixes above.
+- **README rewritten and example output captured** (2026-08-21): full rewrite covering what/why, the Read→Select→Weave→Run→Heal flow, an explicit "Using Bright Data Scraper Studio" section naming every CLI command Weaver wraps (including calling out the `--auto-save` bug/fix by name), an AI-use disclosure section, and local-dev/deploy instructions. `examples/example-output.json` (a real captured `run` result) and `examples/example-heal-diff.json` (a full before → heal → approve → after cycle, reusing already-verified data rather than re-running anything) added as the "example structured output" deliverable.
 
 ## What Is Remaining
-1. Build breakage-detection logic (step 6) — ours to design, not Bright Data's. Nothing auto-triggers a heal yet; the user must notice a problem and describe it manually. Should watch for both missing/null fields *and* an `error` field in the response body (see the transient-suspension finding above). Given the deadline already passed, this is now optional polish, not required — the manual heal flow already tells the full story for a demo/LinkedIn post.
-2. Persist the healing activity log and run history — currently `healLog`/`runResult` are React state only, lost on refresh. No DB/storage exists yet. Same as above: optional now, not required for a demo video.
-3. Write the README properly and capture example structured output.
-4. Record the demo video — this is now the actual deliverable, since the hackathon submission window is closed. Should show the real flow: Read → Select → Weave → Run → Heal → Approve, with the review-the-diff moment as the centerpiece.
-5. Write up the LinkedIn post itself (the actual target output now, not just the Daily Bugle track bonus it started as).
+1. Build breakage-detection logic (step 6) — ours to design, not Bright Data's. Nothing auto-triggers a heal yet; the user must notice a problem and describe it manually. Optional polish now that the deadline's passed — the manual heal flow already tells the full story for a demo/LinkedIn post.
+2. Persist the healing activity log and run history — currently `healLog`/`runResult` are React state only, lost on refresh. No DB/storage exists yet. Same as above: optional now.
+3. Record the demo video — the actual remaining deliverable. Should show the real flow: Read → Select → Weave → Run → Heal → Approve, with the review-the-diff moment as the centerpiece. Budget for real Bright Data timing (70s–3.3min for create, not a quick cut).
+4. Write up the LinkedIn post itself (the actual target output now, not just the Daily Bugle track bonus it started as).
 6. Confirm the latest push (edge-case fixes) is deployed and verified live on Render — not yet done as of this entry.
 
 ## Decisions Made So Far

@@ -1,0 +1,13 @@
+[
+  {
+    "book_title": "A Light in the Attic",
+    "price": {
+      "value": 51.77,
+      "currency": "GBP",
+      "symbol": "£"
+    },
+    "input": {
+      "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
+    }
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "before": [
+    {
+      "book_title": "A Light in the Attic",
+      "input": {
+        "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
+      }
+    }
+  ],
+  "issue_reported": "also include the price in the output",
+  "heal_response": {
+    "collector_id": "c_mt00jee91kijwyx1sk",
+    "status": "awaiting_approval",
+    "diff_summary": "proposed template has 1 step(s) — review at view_url",
+    "preview_result": [
+      {
+        "book_title": "A Light in the Attic",
+        "price": { "value": 51.77, "currency": "GBP" }
+      }
+    ]
+  },
+  "after_approval_and_rerun": [
+    {
+      "book_title": "A Light in the Attic",
+      "price": { "value": 51.77, "currency": "GBP", "symbol": "£" },
+      "input": {
+        "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
+      }
+    }
+  ]
+}
