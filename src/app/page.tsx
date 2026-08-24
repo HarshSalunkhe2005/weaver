@@ -1,7 +1,9 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PagePicker } from "./PagePicker";
+import { detectBreakage } from "@/lib/detectBreakage";
+import { loadSession, saveSession, type StoredSession } from "@/lib/session";
 
 /**
  * Reveals `text` with a one-shot typewriter animation. Measures the text's
@@ -93,6 +95,45 @@ export default function Home() {
   const [resolving, setResolving] = useState(false);
   const [healLog, setHealLog] = useState<HealLogEntry[]>([]);
 
+  const [breakageWarning, setBreakageWarning] = useState<string | null>(null);
+
+  // Restore the last session (URL, collector, last run, heal log) from
+  // localStorage on mount — a refresh shouldn't lose your work.
+  //
+  // `hydrated` is real state, not a ref, and that matters: a ref mutated
+  // synchronously inside the hydration effect would already read `true` on
+  // the save-effect's very first (mount-time) run, even though the actual
+  // state values (url, createResult, ...) haven't been updated to the
+  // hydrated data yet at that point — setState calls only apply on the
+  // *next* render, not synchronously within the same effect batch. That
+  // ordering trap made the save-effect immediately overwrite a freshly
+  // restored session with blank initial state (confirmed by testing:
+  // localStorage held the real data, then went blank again right after
+  // reload). Using state instead means the guard and the real data land
+  // in the same batched update together.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const saved = loadSession();
+    if (saved) {
+      // One-time mount hydration from a browser-only external store
+      // (localStorage), not a response to a state change — no
+      // cascading-render concern despite the rule's general one.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUrl(saved.url);
+      setCreateResult(saved.createResult);
+      setRunResult(saved.runResult);
+      setBreakageWarning(detectBreakage(saved.runResult));
+      setHealLog(saved.healLog);
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const session: StoredSession = { url, createResult, runResult, healLog };
+    saveSession(session);
+  }, [hydrated, url, createResult, runResult, healLog]);
+
   const stage: Stage = createResult
     ? "run"
     : renderedPage
@@ -114,6 +155,7 @@ export default function Home() {
     setCreateResult(null);
     setRunResult(null);
     setRunError(null);
+    setBreakageWarning(null);
     // Heal state is scoped to a specific collector — a fresh page/scraper
     // means a fresh heal history, not stale entries from whatever was
     // healed on the previous collector.
@@ -182,6 +224,7 @@ export default function Home() {
     setCreateResult(null);
     setRunResult(null);
     setRunError(null);
+    setBreakageWarning(null);
     // A fresh scraper means a fresh heal history — the previous collector's
     // heal log doesn't apply to whatever collector_id comes back next.
     setHealIssue("");
@@ -210,6 +253,7 @@ export default function Home() {
     setRunning(true);
     setRunError(null);
     setRunResult(null);
+    setBreakageWarning(null);
     try {
       const res = await fetch(`/api/scrapers/${createResult.collector_id}/run`, {
         method: "POST",
@@ -219,6 +263,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't run the scraper");
       setRunResult(data);
+      setBreakageWarning(detectBreakage(data));
     } catch (err) {
       setRunError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -439,6 +484,20 @@ export default function Home() {
               <pre className="json-block font-mono">
                 {JSON.stringify(runResult, null, 2)}
               </pre>
+            )}
+            {breakageWarning && (
+              <div
+                className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm"
+                style={{ border: "1px solid var(--fray)", background: "var(--surface)" }}
+              >
+                <span className="text-fray">⚠ {breakageWarning}</span>
+                <button
+                  onClick={() => setHealIssue(breakageWarning)}
+                  className="btn-secondary shrink-0"
+                >
+                  Suggest heal
+                </button>
+              </div>
             )}
           </section>
         )}
