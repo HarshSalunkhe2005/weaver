@@ -84,6 +84,23 @@ function describeClientError(err: unknown): string {
   return err instanceof Error ? err.message : "Unknown error";
 }
 
+/**
+ * Triggers a browser download of `data` as a formatted JSON file. Pure
+ * client-side (Blob + object URL) — no server round-trip needed since the
+ * data's already in the browser as `runResult`.
+ */
+function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 const TAGLINE = "Click what matters. Weaver builds the scraper.";
 const SUBTITLE =
   "A real Bright Data Scraper Studio scraper, reviewable every time it has to heal itself.";
@@ -493,9 +510,21 @@ export default function Home() {
               </dd>
             </dl>
 
-            <button onClick={handleRunScraper} disabled={running} className="btn-secondary">
-              {running ? "Running…" : "Run scraper now"}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={handleRunScraper} disabled={running} className="btn-secondary">
+                {running ? "Running…" : "Run scraper now"}
+              </button>
+              {runResult != null && (
+                <button
+                  onClick={() =>
+                    downloadJson(`weaver-${createResult.collector_id}.json`, runResult)
+                  }
+                  className="btn-secondary"
+                >
+                  Download JSON
+                </button>
+              )}
+            </div>
             {runError && <p className="text-fray text-sm">{runError}</p>}
             {runResult != null && (
               <pre className="json-block font-mono">
