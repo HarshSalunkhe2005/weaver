@@ -67,6 +67,23 @@ const STAGES: { key: Stage; label: string }[] = [
   { key: "run", label: "Run" },
 ];
 
+/**
+ * `fetch()` throws a bare `TypeError: Failed to fetch` when the connection
+ * is lost mid-request — including when an infrastructure-level proxy
+ * timeout kills a long-running request before our server ever gets to
+ * respond. Confirmed for real: a `create` call against a slow target died
+ * at exactly 5:00 with `CURLE_RECV_ERROR` when tested directly against
+ * production (see context/project_state_and_workflows.md). The raw
+ * browser message doesn't explain any of that to a user — this gives them
+ * something they can actually act on.
+ */
+function describeClientError(err: unknown): string {
+  if (err instanceof TypeError && /fetch/i.test(err.message)) {
+    return "Lost connection to the server — this can happen if the request ran unusually long (over ~5 minutes) and an infrastructure timeout cut it off. Try again, or a simpler/faster target.";
+  }
+  return err instanceof Error ? err.message : "Unknown error";
+}
+
 const TAGLINE = "Click what matters. Weaver builds the scraper.";
 const SUBTITLE =
   "A real Bright Data Scraper Studio scraper, reviewable every time it has to heal itself.";
@@ -173,7 +190,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "Couldn't read that page");
       setRenderedPage(data);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Unknown error");
+      setLoadError(describeClientError(err));
     } finally {
       setLoadingPage(false);
     }
@@ -242,7 +259,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "Couldn't create the scraper");
       setCreateResult(data);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Unknown error");
+      setCreateError(describeClientError(err));
     } finally {
       setCreating(false);
     }
@@ -265,7 +282,7 @@ export default function Home() {
       setRunResult(data);
       setBreakageWarning(detectBreakage(data));
     } catch (err) {
-      setRunError(err instanceof Error ? err.message : "Unknown error");
+      setRunError(describeClientError(err));
     } finally {
       setRunning(false);
     }
@@ -287,7 +304,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "Couldn't start healing");
       setHealResult(data);
     } catch (err) {
-      setHealError(err instanceof Error ? err.message : "Unknown error");
+      setHealError(describeClientError(err));
     } finally {
       setHealing(false);
     }
@@ -326,7 +343,7 @@ export default function Home() {
         await handleRunScraper();
       }
     } catch (err) {
-      setHealError(err instanceof Error ? err.message : "Unknown error");
+      setHealError(describeClientError(err));
     } finally {
       setResolving(false);
     }
