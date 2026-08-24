@@ -94,13 +94,13 @@ Weaver is a visual front-end for Bright Data Scraper Studio: the user pastes a U
   - Also caught a related lint error (`react-hooks/set-state-in-effect`) genuinely worth understanding rather than blindly suppressing: it's flagging a real general risk (effects that setState in response to their own deps can cascade), but doesn't apply here — this is a one-time mount hydration from a browser-only store, not a reactive response to a state change. Suppressed with a comment explaining why, after confirming that reasoning, not before.
   - **Verified end-to-end with Playwright, checking localStorage directly at each step** rather than trusting the rendered UI alone: seeded a synthetic session (including a deliberately-null `price` field) → confirmed it read back correctly immediately, then again right after reload, then again a full second later (ruling out a delayed second overwrite) → confirmed the breakage banner rendered ("These fields came back empty: price") → confirmed **Suggest heal** correctly pre-filled the heal issue input → confirmed the healing activity log entry restored correctly → and — the part that actually matters, not just cosmetic state — clicked **Run scraper now** on the *restored* collector ID and confirmed it returned real data (`51.77`) from the actual Bright Data API, proving the persisted session is genuinely reusable, not just displayed.
   - `npm run build` and `npm run lint` both clean.
-  - **Not yet deployed to Render** — committed locally as of this entry, needs push + confirmed live verification next.
+  - **Deployed and confirmed live on Render**: polled for the new build (production's `weaver:session` string wasn't present in any served JS chunk right after the push, confirming the old build was still live; a few minutes later it appeared in chunk `35rb0lyx--m9i.js`, matching the same string in the local build output) rather than assuming a push meant it shipped. Sanity-checked the backend still worked on the new deploy too (`run` against a real collector still returned correct data).
 
 ## What Is Remaining
-1. Push the breakage-detection + persistence changes and confirm they're live on Render (same pattern as every other feature — don't assume from the push alone).
-2. Record the demo video — the actual remaining deliverable. Should show the real flow: Read → Select → Weave → Run → Heal → Approve, with the review-the-diff moment as the centerpiece. Budget for real Bright Data timing (70s–3.3min for create, not a quick cut).
-3. Write up the LinkedIn post itself (the actual target output now, not just the Daily Bugle track bonus it started as).
-6. Confirm the latest push (edge-case fixes) is deployed and verified live on Render — not yet done as of this entry.
+1. Record the demo video — the actual remaining deliverable. Should show the real flow: Read → Select → Weave → Run → Heal → Approve, with the review-the-diff moment as the centerpiece. Budget for real Bright Data timing (70s–3.3min for create, not a quick cut).
+2. Write up the LinkedIn post itself (the actual target output now, not just the Daily Bugle track bonus it started as).
+
+Everything else — the app itself, hosting, all edge cases found so far — is done and verified as of this entry, including on production.
 
 ## Decisions Made So Far
 - **Name:** Weaver.
