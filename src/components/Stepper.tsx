@@ -20,7 +20,7 @@ export function Stepper({ stage, showBlurbs = false }: { stage: Stage; showBlurb
         return (
           <li key={s.key} aria-current={active ? "step" : undefined} className="space-y-2">
             <div className="thread-line">
-              <i style={{ width: done ? "100%" : active ? "50%" : "0%" }} />
+              <i style={{ transform: `scaleX(${done ? 1 : active ? 0.5 : 0})` }} />
             </div>
             <div className={`flex items-center gap-1.5 text-xs font-medium ${active ? "text-fg" : done ? "text-dim" : "text-faint"}`}>
               {done ? <Icon name="check" size={13} className="text-thread" /> : <span className="num text-[0.65rem]">0{i + 1}</span>}
