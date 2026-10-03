@@ -19,13 +19,26 @@ export function formatElapsed(ms: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
-/** The phases Bright Data walks through when building a scraper; matched loosely against its step text. */
+/**
+ * The phases Bright Data walks through when building a scraper. The patterns
+ * match its real step names (`user_intent_analyzer`, `output_schema_generator`,
+ * `code_generator`, then a preview run) and are checked against the latest
+ * step only, so a phase is never lit by an older step.
+ */
 const CREATE_PHASES = [
-  { label: "Understanding the fields", match: /intent|analy|understand/i },
+  { label: "Understanding the fields", match: /user_intent|intent_analy/i },
   { label: "Designing the schema", match: /schema/i },
-  { label: "Writing the extractor", match: /code|generat|template/i },
-  { label: "Testing on the page", match: /preview|test|verif|run/i },
+  { label: "Writing the extractor", match: /code_gen|code generat/i },
+  { label: "Testing on the page", match: /preview|test|verif|trigger|scrap/i },
 ];
+
+function phaseReached(steps: string[]): number {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const idx = CREATE_PHASES.findIndex((p) => p.match.test(steps[i]));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
 
 export function JobProgress({
   state,
@@ -46,7 +59,7 @@ export function JobProgress({
 
   const steps = state.job?.steps ?? [];
   const elapsed = state.clientStart ? now - state.clientStart : 0;
-  const reached = phases ? CREATE_PHASES.reduce((max, p, i) => (steps.some((s) => p.match.test(s)) ? i : max), -1) : -1;
+  const reached = phases ? phaseReached(steps) : -1;
 
   return (
     <div className="rise space-y-3 rounded-lg border border-line bg-panel-2 p-4" role="status" aria-live="polite">
