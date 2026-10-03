@@ -88,7 +88,7 @@ Every response is JSON. Errors look like `{ "error": "readable message", "code":
 ## Tests
 
 ```bash
-npm test          # 116 tests: SSRF guard, sanitizer, validation, CLI wrapper, job API
+npm test          # 119 tests: SSRF guard, sanitizer, validation, CLI wrapper, job API
 npm run lint
 npm run typecheck
 ```

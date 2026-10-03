@@ -44,6 +44,15 @@ describe("sanitizeHtml", () => {
     expect(out).toContain("&quot;"); // and the quote was escaped
   });
 
+  it("drops HTML comments, including IE conditional blocks that hide scripts", () => {
+    const out = sanitizeHtml(
+      '<html><head><!--[if lt IE 9]><script src="//x.test/shim.js"></script><![endif]--></head><body><!-- note --><p>hi</p></body></html>',
+      "https://a.test/",
+    ).html;
+    expect(out).not.toMatch(/<!--|<script|shim\.js/i);
+    expect(out).toContain("<p>hi</p>");
+  });
+
   it("falls back to the URL when the page has no title", () => {
     expect(sanitizeHtml("<p>x</p>", "https://a.test/").title).toBe("https://a.test/");
   });

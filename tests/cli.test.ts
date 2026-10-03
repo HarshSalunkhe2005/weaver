@@ -45,11 +45,17 @@ describe("friendlyCliError", () => {
     ["Error: Invalid credentials\n  Status: 401", /rejected the API key/],
     ["409 Another refactor job is still in progress", /still running on this collector/],
     ["Status: 429 concurrent job cap", /busy/],
+    ['Error: {"error":"Collector not found"}\n  Status: 404', /couldn't find that scraper/],
     ["Your account is currently suspended", /suspended/],
     ["BRIGHTDATA_API_KEY is not set", /isn't connected/],
     ["boom\nsomething odd happened", /Bright Data error: something odd happened/],
   ])("maps %j", (raw, expected) => {
     expect(friendlyCliError(raw)).toMatch(expected);
+  });
+
+  it("does not mistake digits inside other numbers for an HTTP status", () => {
+    expect(friendlyCliError("request 140400 timed out")).not.toMatch(/couldn't find that scraper/);
+    expect(friendlyCliError("took 4096ms and 1429 rows")).not.toMatch(/busy/);
   });
 });
 

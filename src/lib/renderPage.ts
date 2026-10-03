@@ -5,7 +5,7 @@
  * Safety model: the iframe uses `sandbox="allow-same-origin"` and nothing
  * else, so none of the page's JavaScript ever runs. That sandbox is the real
  * boundary; the cleanup here is defense in depth:
- *   - scripts, inline `on*` handlers and `javascript:` links are removed
+ *   - scripts, comments, inline `on*` handlers and `javascript:` links are removed
  *   - meta refresh, CSP meta tags, nested iframes and plugin embeds are removed
  *   - a `<base>` pointing at the page's final URL makes relative assets resolve
  *     to the real site, and a no-referrer policy keeps Weaver's address out of
@@ -29,6 +29,8 @@ export function sanitizeHtml(rawHtml: string, baseUrl: string): { title: string;
   const title = $("title").first().text().replace(/\s+/g, " ").trim() || baseUrl;
 
   $("script, iframe, frame, frameset, object, embed, applet, base").remove();
+  // Comments can hide IE conditional blocks such as <!--[if lt IE 9]><script>...: drop them all.
+  $.root().find("*").addBack().contents().filter((_, node) => node.type === "comment").remove();
   $('meta[http-equiv="refresh" i], meta[http-equiv="Content-Security-Policy" i], meta[name="referrer" i]').remove();
 
   $("*").each((_, el) => {

@@ -93,6 +93,9 @@ export function friendlyCliError(output: string): string {
     return "Bright Data rejected the API key this server uses. The owner needs to check it.";
   }
   if (/suspended/i.test(text)) return "Bright Data reported the account as suspended.";
+  if (/collector not found|resource not found|\b404\b/i.test(text)) {
+    return "Bright Data couldn't find that scraper. It may have been deleted from your account.";
+  }
   if (/\b409\b|already in progress|another refactor/i.test(text)) {
     return "Another job is still running on this collector. Give it a minute, then try again.";
   }
