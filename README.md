@@ -18,7 +18,7 @@ Heal    describe what broke; Bright Data proposes a fix; review a before/after
         diff with every changed field highlighted, then approve or reject
 ```
 
-Every step is a real Bright Data call made through their CLI, not a mock. `examples/` holds real captured output from a normal run and from a full heal cycle.
+Every step is a real Bright Data call made through their CLI, not a mock.
 
 ### Using Bright Data Scraper Studio
 

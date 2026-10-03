@@ -30,7 +30,6 @@ export interface StoredSession {
   jobs: Partial<Record<JobKind, string>>;
 }
 
-export const emptySession = (): StoredSession => ({ url: "", createResult: null, runResult: null, healLog: [], proposal: null, issue: "", jobs: {} });
 
 const isString = (v: unknown): v is string => typeof v === "string";
 
