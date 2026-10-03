@@ -5,8 +5,11 @@ services:
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm run start
+    healthCheckPath: /api/health
     envVars:
       - key: BRIGHTDATA_API_KEY
         sync: false # set manually in the Render dashboard, never committed
+      - key: WEAVER_ACCESS_CODE
+        sync: false # optional: set to require an access code on every API call
       - key: NODE_VERSION
         value: 22

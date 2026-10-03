@@ -1,38 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { approveHeal } from "@/lib/brightdata";
+import { approveHeal, hasApiKey } from "@/lib/brightdata";
+import { fail, guard, json, readBody } from "@/lib/http";
+import { BusyError, startJob } from "@/lib/jobs";
+import { approveBody, collectorIdSchema } from "@/lib/validate";
 
-/**
- * POST /api/scrapers/:id/approve
- * Body: { url: string, reject?: boolean }
- *
- * Wraps `brightdata scraper approve <id> --url <url>` (or `--reject`).
- * This is what the user's Approve/Reject click on the "review the fix"
- * screen actually calls. On approve, the healed scraper becomes live
- * under the same collector ID — no downstream code/URLs need to change.
- */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const runtime = "nodejs";
 
-  let body: { url?: string; reject?: boolean };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+/** POST /api/scrapers/:id/approve   { url, reject? }   ->  202 { jobId, job } */
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const g = guard(req, { bucket: "approve", limit: 10, windowMs: 10 * 60_000 });
+  if ("response" in g) return g.response;
+  if (!hasApiKey()) return fail(503, "This Weaver server isn't connected to Bright Data yet.", "not_configured");
 
-  const { url, reject } = body;
-  if (!url) {
-    return NextResponse.json({ error: "'url' is required" }, { status: 400 });
-  }
+  const id = collectorIdSchema.safeParse((await params).id);
+  if (!id.success) return fail(400, id.error.issues[0].message, "invalid_input");
+  const body = await readBody(req, approveBody);
+  if ("response" in body) return body.response;
 
   try {
-    const result = await approveHeal(id, url, Boolean(reject));
-    return NextResponse.json(result);
+    const job = startJob("approve", g.ip, (ctx) => approveHeal(id.data, body.data.url, Boolean(body.data.reject), ctx));
+    return json({ jobId: job.id, job }, 202);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    if (err instanceof BusyError) return fail(429, err.message, "busy");
+    throw err;
   }
 }

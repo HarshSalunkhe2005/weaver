@@ -1,55 +1,27 @@
-import { NextRequest, NextResponse } from "next/server";
+import { fail, guard, json, readBody } from "@/lib/http";
+import { FetchFailedError } from "@/lib/net";
 import { fetchRenderablePage } from "@/lib/renderPage";
+import { renderPageBody } from "@/lib/validate";
+
+export const runtime = "nodejs";
 
 /**
- * POST /api/render-page
- * Body: { url: string }
+ * POST /api/render-page   { url }
  *
- * Server-side fetch avoids CORS entirely. Returns sanitized HTML meant to
- * be embedded directly via an iframe's `srcDoc` on the client — this is
- * the picker's actual clicking surface (real layout), replacing the old
- * flattened text-list approach.
+ * Fetches the page on the server (no CORS problems), sanitizes it, and returns
+ * HTML for the picker's sandboxed iframe. The fetch is SSRF-guarded: see src/lib/net.ts.
  */
-export async function POST(req: NextRequest) {
-  let body: { url?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+export async function POST(req: Request) {
+  const g = guard(req, { bucket: "render", limit: 30, windowMs: 60_000 });
+  if ("response" in g) return g.response;
 
-  const { url } = body;
-  if (!url) {
-    return NextResponse.json({ error: "'url' is required" }, { status: 400 });
-  }
+  const body = await readBody(req, renderPageBody);
+  if ("response" in body) return body.response;
 
   try {
-    new URL(url);
-  } catch {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
-  }
-
-  try {
-    const page = await fetchRenderablePage(url);
-    return NextResponse.json(page);
+    return json(await fetchRenderablePage(body.data.url));
   } catch (err) {
-    return NextResponse.json({ error: describeFetchError(err) }, { status: 502 });
+    if (err instanceof FetchFailedError) return fail(502, err.message, "fetch_failed");
+    return fail(502, "Couldn't read that page.", "fetch_failed");
   }
-}
-
-/**
- * Node's `fetch` collapses every network-level failure (DNS lookup
- * failure, connection refused, TLS error) into a bare `TypeError: fetch
- * failed` — the actually useful reason lives one level down in `err.cause`
- * (e.g. `ENOTFOUND`, `ECONNREFUSED`). Surface that instead of the generic
- * message so a user pasting a typo'd or dead domain sees something
- * actionable rather than just "fetch failed".
- */
-function describeFetchError(err: unknown): string {
-  if (!(err instanceof Error)) return "Unknown error";
-  const cause = (err as { cause?: unknown }).cause;
-  if (cause instanceof Error && cause.message) {
-    return `${err.message}: ${cause.message}`;
-  }
-  return err.message;
 }

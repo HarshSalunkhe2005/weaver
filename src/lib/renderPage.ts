@@ -1,75 +1,57 @@
 /**
- * Fetches a target page and prepares it to be embedded, visually intact, in
- * a sandboxed iframe as the picker's actual clicking surface — real layout,
- * real CSS, instead of a flattened text list.
+ * Fetches a target page and prepares it to be embedded, visually intact, in a
+ * sandboxed iframe as the picker's clicking surface.
  *
- * Safety model: the iframe is rendered with `sandbox="allow-same-origin"`
- * and NOTHING else — no `allow-scripts`. That alone is what makes it safe to
- * embed an arbitrary third-party page's HTML: none of its JavaScript ever
- * runs, in our origin or any other. Everything below is defense in depth on
- * top of that, not the actual safety boundary:
- *   - strip <script> tags and inline `on*=` handlers, so there's nothing
- *     inert-but-confusing left in the DOM
- *   - strip <meta http-equiv="refresh"> so the sandboxed doc can't try to
- *     navigate itself
- *   - strip any CSP meta tag the target page sets, since it was authored
- *     for the target's own origin/resources and would otherwise just cause
- *     broken loads inside ours
- *   - strip nested <iframe>s to avoid recursive/confusing embeds
+ * Safety model: the iframe uses `sandbox="allow-same-origin"` and nothing
+ * else, so none of the page's JavaScript ever runs. That sandbox is the real
+ * boundary; the cleanup here is defense in depth:
+ *   - scripts, inline `on*` handlers and `javascript:` links are removed
+ *   - meta refresh, CSP meta tags, nested iframes and plugin embeds are removed
+ *   - a `<base>` pointing at the page's final URL makes relative assets resolve
+ *     to the real site, and a no-referrer policy keeps Weaver's address out of
+ *     the third-party requests the preview makes
  *
- * A <base> tag pointing at the page's own URL is injected so that every
- * relative image/stylesheet/link in the markup resolves back to the real
- * site — this is what makes the layout come out looking right without us
- * proxying every asset ourselves.
- *
- * Known, accepted limitation: pages that render their real content via
- * client-side JavaScript (SPAs) will look broken here, because we
- * deliberately never execute the target's scripts. Server-rendered pages
- * render essentially as-is.
+ * Known limitation: pages that build their content with client-side JavaScript
+ * look incomplete here, because scripts are deliberately never executed.
  */
 import * as cheerio from "cheerio";
+import { decodeHtml, safeFetch, type SafeFetchOptions } from "@/lib/net";
 
 export interface RenderablePage {
   title: string;
   html: string;
+  url: string;
+  size: number;
 }
 
-export async function fetchRenderablePage(url: string): Promise<RenderablePage> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    },
-    signal: AbortSignal.timeout(15000),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Fetching ${url} failed: HTTP ${res.status}`);
-  }
-
-  const rawHtml = await res.text();
+export function sanitizeHtml(rawHtml: string, baseUrl: string): { title: string; html: string } {
   const $ = cheerio.load(rawHtml);
+  const title = $("title").first().text().replace(/\s+/g, " ").trim() || baseUrl;
 
-  const title = $("title").first().text().trim() || url;
+  $("script, iframe, frame, frameset, object, embed, applet, base").remove();
+  $('meta[http-equiv="refresh" i], meta[http-equiv="Content-Security-Policy" i], meta[name="referrer" i]').remove();
 
-  $("script").remove();
-  $("iframe").remove();
-  $('meta[http-equiv="refresh" i]').remove();
-  $('meta[http-equiv="Content-Security-Policy" i]').remove();
-  $("base").remove();
-
-  // Strip inline event handlers and javascript: URLs from every element —
-  // inert under our sandbox regardless, this just keeps the DOM clean.
   $("*").each((_, el) => {
     if (el.type !== "tag") return;
     for (const attr of Object.keys(el.attribs)) {
       if (/^on/i.test(attr)) $(el).removeAttr(attr);
     }
-    const href = $(el).attr("href");
-    if (href && /^\s*javascript:/i.test(href)) $(el).removeAttr("href");
+    for (const attr of ["href", "src", "action", "formaction", "xlink:href"]) {
+      const value = $(el).attr(attr);
+      if (value && /^\s*(javascript|vbscript):/i.test(value)) $(el).removeAttr(attr);
+    }
   });
 
-  $("head").prepend(`<base href="${url}">`);
+  // Attribute values are set through the DOM API, never string-concatenated.
+  const head = $("head").first();
+  head.prepend($("<meta>").attr({ name: "referrer", content: "no-referrer" }));
+  head.prepend($("<base>").attr("href", baseUrl));
 
   return { title, html: $.html() };
+}
+
+export async function fetchRenderablePage(url: string, opts?: SafeFetchOptions): Promise<RenderablePage> {
+  const { finalUrl, contentType, bytes } = await safeFetch(url, opts);
+  const { title, html } = sanitizeHtml(decodeHtml(bytes, contentType), finalUrl);
+  return { title, html, url: finalUrl, size: bytes.byteLength };
 }

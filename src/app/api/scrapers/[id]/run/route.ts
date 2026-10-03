@@ -1,38 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { runScraper } from "@/lib/brightdata";
+import { hasApiKey, runScraper } from "@/lib/brightdata";
+import { fail, guard, json, readBody } from "@/lib/http";
+import { BusyError, startJob } from "@/lib/jobs";
+import { collectorIdSchema, runBody } from "@/lib/validate";
 
-/**
- * POST /api/scrapers/:id/run
- * Body: { url: string }
- *
- * Wraps `brightdata scraper run <id> <url>`. Weaver calls this on demand
- * and (later) on a schedule to pull fresh structured data, and also uses
- * its result to feed the breakage-detection logic (nulls / missing fields
- * / schema drift vs. the previous run).
- */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const runtime = "nodejs";
 
-  let body: { url?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+/** POST /api/scrapers/:id/run   { url }   ->  202 { jobId, job } */
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const g = guard(req, { bucket: "run", limit: 20, windowMs: 10 * 60_000 });
+  if ("response" in g) return g.response;
+  if (!hasApiKey()) return fail(503, "This Weaver server isn't connected to Bright Data yet.", "not_configured");
 
-  const { url } = body;
-  if (!url) {
-    return NextResponse.json({ error: "'url' is required" }, { status: 400 });
-  }
+  const id = collectorIdSchema.safeParse((await params).id);
+  if (!id.success) return fail(400, id.error.issues[0].message, "invalid_input");
+  const body = await readBody(req, runBody);
+  if ("response" in body) return body.response;
 
   try {
-    const result = await runScraper(id, url);
-    return NextResponse.json(result);
+    const job = startJob("run", g.ip, (ctx) => runScraper(id.data, body.data.url, ctx));
+    return json({ jobId: job.id, job }, 202);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 502 });
+    if (err instanceof BusyError) return fail(429, err.message, "busy");
+    throw err;
   }
 }

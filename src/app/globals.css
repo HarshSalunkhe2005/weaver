@@ -1,47 +1,303 @@
 @import "tailwindcss";
 
 /*
- * Deliberately single-theme (dark), matching what every researched reference
- * (Linear, Raycast, Warp) actually ships on their own marketing surfaces —
- * not a light/dark toggle. Background and every color below are painted
- * explicitly so the page holds regardless of host theme.
+ * Direction "Loom": a dark workshop bench with one warm thread running through it.
+ * Warm near-black surfaces, hairline borders, and a single amber accent (the
+ * thread) used only for the active step, the primary action and selections.
+ * Green ("mend") and red ("fray") appear only as meaning: added vs removed,
+ * healthy vs broken. Dark only; every colour is painted explicitly.
  */
 :root {
-  --ink: #14110d;
-  --surface: #1c1811;
-  --surface-2: #262016;
-  --border: #372d1e;
-  --text: #f1ece0;
-  --text-muted: #8f8570;
-  --thread: #e2953f;
-  --thread-dim: #3a2a15;
-  --mend: #4fae8f;
-  --fray: #c96a4a;
+  color-scheme: dark;
+  --ink: #0d0c0a;
+  --panel: #151310;
+  --panel-2: #1c1915;
+  --panel-3: #25211b;
+  --line: #2b2721;
+  --line-strong: #3b362d;
+  --fg: #efe9dc;
+  --dim: #a89f8d;
+  --faint: #8a8272;
+  --thread: #e8a04a;
+  --thread-ink: #1a1206;
+  --thread-soft: rgba(232, 160, 74, 0.12);
+  --mend: #6fcf9f;
+  --mend-soft: rgba(111, 207, 159, 0.12);
+  --fray: #ef7a5f;
+  --fray-soft: rgba(239, 122, 95, 0.12);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-panel-3: var(--panel-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-dim: var(--dim);
+  --color-faint: var(--faint);
+  --color-thread: var(--thread);
+  --color-thread-ink: var(--thread-ink);
+  --color-thread-soft: var(--thread-soft);
+  --color-mend: var(--mend);
+  --color-mend-soft: var(--mend-soft);
+  --color-fray: var(--fray);
+  --color-fray-soft: var(--fray-soft);
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-instrument), ui-serif, Georgia, serif;
 }
 
 * {
-  border-color: var(--border);
+  border-color: var(--line);
 }
 
 html {
   background: var(--ink);
+  scrollbar-color: var(--line-strong) var(--ink);
 }
 
 body {
   background: var(--ink);
-  color: var(--text);
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "cv01", "ss03";
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: var(--thread-dim);
-  color: var(--text);
+  background: var(--thread);
+  color: var(--thread-ink);
 }
 
 :focus-visible {
   outline: 2px solid var(--thread);
   outline-offset: 2px;
+  border-radius: 6px;
+}
+
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Controls ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color 160ms var(--ease),
+    border-color 160ms var(--ease),
+    color 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.45;
+}
+.btn-primary {
+  background: var(--thread);
+  color: var(--thread-ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: #f1b265;
+}
+.btn-quiet {
+  border: 1px solid var(--line-strong);
+  color: var(--fg);
+  background: transparent;
+}
+.btn-quiet:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: var(--faint);
+}
+.btn-danger {
+  border: 1px solid color-mix(in srgb, var(--fray) 45%, var(--line));
+  color: var(--fray);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--fray-soft);
+}
+.btn-sm {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--fg);
+  font-size: 0.9rem;
+  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+.input::placeholder {
+  color: var(--faint);
+}
+.input:hover {
+  border-color: var(--faint);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--thread);
+  box-shadow: 0 0 0 3px var(--thread-soft);
+}
+.input[aria-invalid="true"] {
+  border-color: var(--fray);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--dim);
+}
+
+.tag {
+  flex-shrink: 0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--panel-3);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ---------- The thread: one authored motion ---------- */
+
+/* A single line that runs through the stepper and stitches in as steps complete. */
+.thread-line {
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.thread-line > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--thread);
+  border-radius: 2px;
+  transition: width 700ms var(--ease);
+}
+
+/* Indeterminate: a dashed thread that travels while a job is running. */
+.thread-run {
+  height: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--line);
+  position: relative;
+}
+.thread-run::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(90deg, var(--thread) 0 12px, transparent 12px 22px);
+  background-size: 44px 2px;
+  animation: thread-travel 1s linear infinite;
+}
+@keyframes thread-travel {
+  to {
+    background-position: 44px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--panel-2) 0%, var(--panel-3) 50%, var(--panel-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.rise {
+  animation: rise 360ms var(--ease) both;
+}
+
+/* ---------- JSON / diff ---------- */
+
+.json-line {
+  display: block;
+  white-space: pre;
+  padding: 0 0.75rem;
+  border-left: 2px solid transparent;
+}
+.json-line[data-mark="added"] {
+  background: var(--mend-soft);
+  border-left-color: var(--mend);
+}
+.json-line[data-mark="removed"] {
+  background: var(--fray-soft);
+  border-left-color: var(--fray);
+}
+.json-line[data-mark="changed"] {
+  background: var(--thread-soft);
+  border-left-color: var(--thread);
+}
+.j-key {
+  color: #d9c9a8;
+}
+.j-str {
+  color: #9fd9b7;
+}
+.j-num {
+  color: #f0b36a;
+}
+.j-lit {
+  color: #c4a3e8;
+}
+.j-punct {
+  color: var(--faint);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -49,310 +305,7 @@ body {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-}
-
-/* ---------- Type ---------- */
-
-.font-mono {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-.wordmark {
-  font-weight: 650;
-  letter-spacing: -0.03em;
-}
-
-.text-muted {
-  color: var(--text-muted);
-}
-
-.text-mend {
-  color: var(--mend);
-}
-
-.text-fray {
-  color: var(--fray);
-}
-
-/* ---------- Masthead ---------- */
-
-.masthead {
-  border-bottom: 1px solid var(--border);
-}
-
-.masthead-rule {
-  height: 1px;
-  width: 3rem;
-  background-image: linear-gradient(
-    to right,
-    var(--thread) 0,
-    var(--thread) 4px,
-    transparent 4px,
-    transparent 8px
-  );
-  background-size: 8px 1px;
-}
-
-/* One-shot typewriter reveal for the tagline. The target width is the
-   text's own measured pixel width (set as --tw-final-width by the
-   Typewriter component after mount) — animating to 100% would instead
-   race to the *container's* width and clip long strings mid-sentence.
-   Runs once, never loops. Falls back to fully-visible text under
-   reduced-motion. */
-.typewriter {
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
-  border-right: 1px solid var(--thread);
-  width: 0;
-}
-
-.typewriter[data-measured="true"] {
-  animation: typewriter-reveal 1.4s steps(60, end) 1 forwards,
-    typewriter-caret 800ms steps(1) 7;
-}
-
-@keyframes typewriter-reveal {
-  from {
-    width: 0;
-  }
-  to {
-    width: var(--tw-final-width, 100%);
-  }
-}
-
-@keyframes typewriter-caret {
-  50% {
-    border-color: transparent;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .typewriter {
-    animation: none;
-    border-right: none;
-    width: auto;
-  }
-}
-
-/* ---------- Stepper ---------- */
-
-.stepper {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.25rem;
-}
-
-.stepper-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.stepper-rule {
-  height: 2px;
-  background: var(--border);
-}
-
-.stepper-cell[data-active="true"] .stepper-rule {
-  background: var(--thread);
-}
-
-.stepper-cell[data-done="true"] .stepper-rule {
-  background: var(--mend);
-}
-
-.stepper-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.stepper-cell[data-active="true"] .stepper-label {
-  color: var(--text);
-}
-
-.stepper-cell[data-done="true"] .stepper-label {
-  color: var(--mend);
-}
-
-.stepper-index {
-  font-family: var(--font-mono), monospace;
-}
-
-/* ---------- Workbench ---------- */
-
-.workbench-card {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 1.25rem;
-}
-
-.field-input {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--ink);
-  color: var(--text);
-  padding: 0.55rem 0.75rem;
-  font-size: 0.9rem;
-  transition: border-color 120ms ease;
-}
-
-.field-input::placeholder {
-  color: var(--text-muted);
-}
-
-.field-input:focus {
-  border-color: var(--thread);
-}
-
-.btn-primary {
-  border-radius: 6px;
-  background: var(--thread);
-  color: var(--ink);
-  font-weight: 600;
-  font-size: 0.88rem;
-  padding: 0.6rem 1.1rem;
-  transition: opacity 120ms ease;
-}
-
-.btn-primary:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
-.btn-primary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font-weight: 600;
-  font-size: 0.82rem;
-  padding: 0.5rem 0.9rem;
-  transition: border-color 120ms ease;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  border-color: var(--thread);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.element-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.85rem;
-  cursor: pointer;
-  border-left: 2px solid transparent;
-  border-bottom: 1px solid var(--border);
-  transition: background 100ms ease, border-color 100ms ease;
-}
-
-.element-row:last-child {
-  border-bottom: none;
-}
-
-.element-row:hover {
-  background: var(--surface-2);
-}
-
-.element-row[data-selected="true"] {
-  background: var(--thread-dim);
-  border-left-color: var(--thread);
-}
-
-.tag-pill {
-  flex-shrink: 0;
-  border-radius: 4px;
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-family: var(--font-mono), monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: 0.15rem 0.4rem;
-}
-
-/* ---------- Weaving progress (shown while create/heal is polling) ----------
-   A moving dashed thread rather than a generic spinner — ties to the
-   product's actual metaphor and gives the ~60-70s wait something honest
-   to look at instead of a static "please wait". */
-.weaving-progress {
-  height: 2px;
-  width: 100%;
-  border-radius: 2px;
-  overflow: hidden;
-  background: var(--border);
-  position: relative;
-}
-
-.weaving-progress::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--thread) 0,
-    var(--thread) 10px,
-    transparent 10px,
-    transparent 20px
-  );
-  background-size: 40px 2px;
-  animation: weaving-slide 900ms linear infinite;
-}
-
-@keyframes weaving-slide {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 40px 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .weaving-progress::after {
-    animation: none;
-  }
-}
-
-/* ---------- Result panels ---------- */
-
-.result-panel {
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--mend);
-  background: var(--surface);
-  padding: 1.1rem 1.25rem;
-}
-
-.result-panel-error {
-  border-top-color: var(--fray);
-}
-
-.json-block {
-  border-radius: 6px;
-  background: var(--ink);
-  border: 1px solid var(--border);
-  padding: 0.9rem 1rem;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  max-height: 20rem;
-  overflow: auto;
 }
